@@ -1,0 +1,20 @@
+[package]
+name = "twisterl-rs"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "twisterl_rs"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.22.3", features = ["extension-module", "multiple-pymethods"] }
+nalgebra = "0.33.0"
+rand = "0.8.4"
+rayon = "1.1.0"
+petgraph = "0.6.5"
+
+[profile.release]
+opt-level = 3
+lto = 'fat'

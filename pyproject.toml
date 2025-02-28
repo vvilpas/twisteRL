@@ -1,0 +1,34 @@
+[build-system]
+requires = ["maturin>=1.7,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "twisterl"
+requires-python = ">=3.8"
+version = "0.1.0"
+description = "Minimal RL in Rust"
+authors = [{ name = "IBM Quantum+AI Team" }]
+readme = "README.md"
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+]
+dynamic = ["version"]
+dependencies = [
+  "torch>=2.2",
+  "loguru>=0.7",
+  "numpy>2.0",
+  "tensorboard>2.0"
+]
+
+
+[tool.setuptools]
+packages = ["twisterl"]
+
+[tool.maturin]
+features = ["pyo3/extension-module"]
+profile = "release"
+module-name = "twisterl.twisterl_rs"
+
+[linkedProjects]
