@@ -1,7 +1,21 @@
+// -*- coding: utf-8 -*-
+/* 
+(C) Copyright 2025 IBM. All Rights Reserved.
+
+This code is licensed under the Apache License, Version 2.0. You may
+obtain a copy of this license in the LICENSE.txt file in the root directory
+of this source tree or at http://www.apache.org/licenses/LICENSE-2.0.
+
+Any modifications or derivative works of this code must retain this
+copyright notice, and modified files need to carry a notice indicating
+that they have been altered from the originals.
+*/
+
 use pyo3::prelude::*;
 use crate::rl::env::Env;
 use crate::envs::puzzle::Puzzle;
 use crate::python_interface::policy::PyPolicy;
+use crate::python_interface::error_mapping::MyError;
 use crate::rl::solve::solve;
 use crate::rl::evaluate::evaluate;
 
@@ -140,6 +154,6 @@ pub fn evaluate_py(py_env: PyRef<PyBaseEnv>,
     seed: usize,          // unused for now
     C: f32,
     max_expand_depth: usize,
-    num_cores: usize) -> (f32, f32) {
-    evaluate(&py_env.env, &*policy.policy, num_episodes, deterministic, num_searches, num_mcts_searches, seed, C, max_expand_depth, num_cores)
+    num_cores: usize) -> PyResult<(f32, f32)> {
+    Ok(evaluate(&py_env.env, &*policy.policy, num_episodes, deterministic, num_searches, num_mcts_searches, seed, C, max_expand_depth, num_cores).map_err(MyError::from)?)
 }
