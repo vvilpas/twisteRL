@@ -40,6 +40,7 @@ def test_make_config():
     cfg = make_config("PPO", {"policy": {"embedding_size": 128}})
     assert cfg["policy"]["embedding_size"] == 128
     assert cfg["optimizer"]["lr"] == 0.0003
+    assert cfg["observation_encoder"]["type"] == "multi_hot"
 
 
 def test_prepare_algorithm():

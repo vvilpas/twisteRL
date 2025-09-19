@@ -20,6 +20,7 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from twisterl.defaults import make_config
+from twisterl.rl.observation import make_observation_encoder
 
 from twisterl import twisterl
 
@@ -54,6 +55,11 @@ class Algorithm:
 
         # Make full config
         self.config = make_config(type(self).__name__, config)
+
+        # Observation encoder handles sparse/dense conversions
+        self.obs_encoder = make_observation_encoder(
+            self.obs_size, self.config.get("observation_encoder")
+        )
 
         # Make policy
         self.policy = policy.to(self.config["device"])
