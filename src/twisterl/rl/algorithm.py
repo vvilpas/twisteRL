@@ -20,6 +20,7 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from twisterl.defaults import make_config
+from twisterl.rl.encoders import create_encoder
 
 from twisterl import twisterl
 
@@ -64,6 +65,9 @@ class Algorithm:
         self.optimizer = torch.optim.Adam(
             self.policy.parameters(), **self.config["optimizer"]
         )
+
+        # Create observation encoder
+        self.obs_encoder = create_encoder(self.config["encoding"]["encoder"], self.obs_size)
 
     @timed
     @abstractmethod

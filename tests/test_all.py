@@ -8,6 +8,7 @@ from twisterl.nn.utils import sequential_to_rust, embeddingbag_to_rust
 from twisterl.nn.policy import BasicPolicy, Conv1dPolicy, Transpose
 from twisterl.rl.ppo import PPO
 from twisterl.rl.az import AZ
+from twisterl.rl.encoders import OneHotEncoder, IdentityEncoder
 from twisterl.defaults import PPO_CONFIG, AZ_CONFIG
 
 
@@ -155,3 +156,95 @@ def test_az_data_to_torch_and_train_step():
     torch_data, _ = algo.data_to_torch(data)
     metrics, _ = algo.train_step(torch_data)
     assert "total" in metrics
+
+
+def test_algorithm_default_encoder():
+    """Test that algorithms use OneHotEncoder by default."""
+    ppo_algo = _make_ppo()
+    az_algo = _make_az()
+
+    assert isinstance(ppo_algo.obs_encoder, OneHotEncoder)
+    assert isinstance(az_algo.obs_encoder, OneHotEncoder)
+    assert ppo_algo.obs_encoder.obs_size == 3  # DummyEnv size
+    assert az_algo.obs_encoder.obs_size == 3
+
+
+def test_algorithm_configurable_encoder():
+    """Test that encoder can be configured via config."""
+    env = DummyEnv()
+    pol = _make_policy()
+
+    # Test with identity encoder
+    cfg = {
+        "device": "cpu",
+        "encoding": {"encoder": "identity"},
+        "collecting": PPO_CONFIG["collecting"],
+        "training": {**PPO_CONFIG["training"], "num_epochs": 1},
+        "optimizer": PPO_CONFIG["optimizer"],
+    }
+
+    ppo_algo = PPO(env, pol, cfg)
+    assert isinstance(ppo_algo.obs_encoder, IdentityEncoder)
+
+
+def test_ppo_encoder_integration():
+    """Test that PPO properly uses the encoder in data_to_torch."""
+    algo = _make_ppo()
+    data = DummyPPOData()
+
+    # Mock the encoder to verify it's called
+    original_encode = algo.obs_encoder.encode
+    encode_called = False
+
+    def mock_encode(obs):
+        nonlocal encode_called
+        encode_called = True
+        return original_encode(obs)
+
+    algo.obs_encoder.encode = mock_encode
+
+    torch_data, _ = algo.data_to_torch(data)
+
+    assert encode_called
+    assert len(torch_data) == 5  # PPO returns 5 tensors
+
+
+def test_az_encoder_integration():
+    """Test that AZ properly uses the encoder in data_to_torch."""
+    algo = _make_az()
+    data = DummyAZData()
+
+    # Mock the encoder to verify it's called
+    original_encode = algo.obs_encoder.encode
+    encode_called = False
+
+    def mock_encode(obs):
+        nonlocal encode_called
+        encode_called = True
+        return original_encode(obs)
+
+    algo.obs_encoder.encode = mock_encode
+
+    torch_data, _ = algo.data_to_torch(data)
+
+    assert encode_called
+    assert len(torch_data) == 3  # AZ returns 3 tensors
+
+
+def test_encoder_output_shapes():
+    """Test that encoded observations have correct shapes for both algorithms."""
+    # PPO test
+    ppo_algo = _make_ppo()
+    ppo_data = DummyPPOData()
+    ppo_torch_data, _ = ppo_algo.data_to_torch(ppo_data)
+    pt_obs = ppo_torch_data[0]  # First tensor is observations
+
+    assert pt_obs.shape == (1, 3)  # 1 obs, 3 features (one-hot encoded)
+
+    # AZ test
+    az_algo = _make_az()
+    az_data = DummyAZData()
+    az_torch_data, _ = az_algo.data_to_torch(az_data)
+    pt_obs = az_torch_data[0]  # First tensor is observations
+
+    assert pt_obs.shape == (1, 3)  # 1 obs, 3 features (one-hot encoded)

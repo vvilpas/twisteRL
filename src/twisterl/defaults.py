@@ -99,6 +99,10 @@ AZ_CONFIG = {
 
 ALGO_CONFIG = {"PPO": PPO_CONFIG, "AZ": AZ_CONFIG}
 
+# Encoding
+
+ENCODING_CONFIG = {"encoder": "one_hot"}
+
 # Learning
 
 LEARNING_CONFIG = {"diff_threshold": 0.85, "diff_metric": "ppo_deterministic"}
@@ -118,6 +122,7 @@ def make_config(algo_name, input_config):
         "device": "cuda" if torch.cuda.is_available() else "cpu",
         "policy": copy.deepcopy(POLICY_CONFIG),
         "evals": copy.deepcopy(EVALS_CONFIG),
+        "encoding": copy.deepcopy(ENCODING_CONFIG),
         "learning": copy.deepcopy(LEARNING_CONFIG),
         "logging": copy.deepcopy(LOGGING_CONFIG),
         **copy.deepcopy(ALGO_CONFIG[algo_name]),

@@ -11,7 +11,6 @@
 # that they have been altered from the originals.
 
 import torch
-import numpy as np
 
 from twisterl.rl.algorithm import Algorithm, timed
 from twisterl import twisterl
@@ -33,9 +32,7 @@ class PPO(Algorithm):
             data.additional_data["rets"],
             data.additional_data["advs"],
         )
-        np_obs = np.zeros((len(obs), self.obs_size), dtype=float)
-        for i, obs_i in enumerate(obs):
-            np_obs[i, obs_i] = 1.0
+        np_obs = self.obs_encoder.encode(obs)
 
         pt_obs = torch.tensor(np_obs, dtype=torch.float, device=self.config["device"])
         pt_logits = torch.tensor(
