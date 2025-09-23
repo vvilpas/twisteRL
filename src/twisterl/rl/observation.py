@@ -10,7 +10,22 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
-"""Thin Python wrapper around the Rust observation codec."""
+"""Thin Python wrapper around the Rust observation codec.
+
+We keep a small shim in Python even though the heavy lifting happens in Rust.
+This wrapper is the single place that:
+
+* Converts collectors' nested lists / NumPy arrays into the plain lists that the
+  PyO3 bindings expect, and turns the Rust output back into NumPy (most callers
+  still work with tensors/arrays).
+* Preserves the historical `self.obs_encoder(obs)` call pattern used by
+  algorithms and tests, so we can swap codecs without touching every learner.
+* Carries per-run dtype choices that may differ from the float32 default the
+  Rust side returns (useful when training on CPU/GPU with different precision).
+
+Keeping these concerns in one spot avoids scattering conversion boilerplate
+around PPO/AZ and keeps configuration handling readable.
+"""
 
 from __future__ import annotations
 
@@ -22,7 +37,7 @@ from twisterl import twisterl
 
 
 class ObservationEncoder:
-    """Wraps a Rust-backed observation codec and exposes a numpy interface."""
+    """Wraps the Rust codec while hiding Python-facing glue (dtype/NumPy)."""
 
     def __init__(self, rust_codec, dtype: type = float):
         self._codec = rust_codec
