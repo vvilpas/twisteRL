@@ -10,7 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
-"""Utilities to adapt raw observations coming from collectors."""
+"""Thin Python wrapper around the Rust observation codec."""
 
 from __future__ import annotations
 
@@ -18,44 +18,29 @@ from typing import Iterable, Sequence
 
 import numpy as np
 
+from twisterl import twisterl
+
 
 class ObservationEncoder:
-    """Base class for objects that convert raw observations to numpy arrays."""
+    """Wraps a Rust-backed observation codec and exposes a numpy interface."""
 
-    def __call__(self, obs: Sequence[Sequence[int]] | np.ndarray) -> np.ndarray:
-        raise NotImplementedError
+    def __init__(self, rust_codec, dtype: type = float):
+        self._codec = rust_codec
+        self._dtype = dtype
 
+    def __call__(self, obs: Sequence[Iterable[int]] | np.ndarray) -> np.ndarray:
+        if isinstance(obs, np.ndarray):
+            obs_list = obs.tolist()
+        else:
+            obs_list = [list(sample) for sample in obs]
+        encoded = self._codec.encode(obs_list)
+        return np.asarray(encoded, dtype=self._dtype)
 
-class MultiHotObservationEncoder(ObservationEncoder):
-    """Expands sparse index observations into multi-hot vectors."""
-
-    def __init__(self, obs_size: int, dtype: type = float):
-        self.obs_size = obs_size
-        self.dtype = dtype
-
-    def __call__(self, obs: Sequence[Iterable[int]]) -> np.ndarray:
-        np_obs = np.zeros((len(obs), self.obs_size), dtype=self.dtype)
-        for row_idx, obs_indices in enumerate(obs):
-            np_obs[row_idx, obs_indices] = 1.0
-        return np_obs
+    def to_rust(self):
+        return self._codec.clone()
 
 
-class IdentityObservationEncoder(ObservationEncoder):
-    """Leaves the observation untouched (apart from optional dtype casting)."""
-
-    def __init__(self, dtype: type | None = None):
-        self.dtype = dtype
-
-    def __call__(self, obs: Sequence[Sequence[float]] | np.ndarray) -> np.ndarray:
-        np_obs = np.asarray(obs)
-        if self.dtype is not None:
-            np_obs = np_obs.astype(self.dtype, copy=False)
-        return np_obs
-
-
-def make_observation_encoder(obs_size: int, config=None) -> ObservationEncoder:
-    """Factory that creates an observation encoder from configuration."""
-
+def make_observation_encoder(obs_shape: Sequence[int], config=None) -> ObservationEncoder:
     if config is None:
         raise ValueError("Observation encoder configuration must be provided.")
 
@@ -69,11 +54,12 @@ def make_observation_encoder(obs_size: int, config=None) -> ObservationEncoder:
         params = {k: v for k, v in config.items() if k != "type"}
 
     if encoder_type == "multi_hot":
-        dtype = params.get("dtype", int)
-        return MultiHotObservationEncoder(obs_size, dtype=dtype)
-
-    if encoder_type == "identity":
-        dtype = params.get("dtype")
-        return IdentityObservationEncoder(dtype=dtype)
+        if len(obs_shape) < 2:
+            raise ValueError("Multi-hot encoder requires obs_shape with at least two elements.")
+        num_slots = int(obs_shape[0])
+        domain_size = int(obs_shape[1])
+        dtype = params.get("dtype", float)
+        rust_codec = twisterl.codec.make_observation_codec("multi_hot", num_slots, domain_size)
+        return ObservationEncoder(rust_codec, dtype=dtype)
 
     raise ValueError(f"Unknown observation encoder type: {encoder_type}")

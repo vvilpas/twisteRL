@@ -56,20 +56,27 @@ class Algorithm:
         # Make full config
         self.config = make_config(type(self).__name__, config)
 
-        # Observation encoder handles sparse/dense conversions
-        self.obs_encoder = make_observation_encoder(
-            self.obs_size, self.config.get("observation_encoder")
-        )
-
         # Make policy
         self.policy = policy.to(self.config["device"])
         self.policy.device = self.config["device"]
         self.rs_pol = self.policy.to_rust()
 
+        # Observation encoder handles sparse/dense conversions
+        self.obs_shape = getattr(self.policy, "obs_shape", None)
+        if self.obs_shape is None:
+            raise ValueError("Policy must expose obs_shape for observation encoding.")
+        self.obs_encoder = make_observation_encoder(
+            self.obs_shape, self.config.get("observation_encoder")
+        )
+
         # Make optimizer
         self.optimizer = torch.optim.Adam(
             self.policy.parameters(), **self.config["optimizer"]
         )
+
+    def encode_obs(self, obs):
+        """Returns numpy array representation for the collected observations."""
+        return self.obs_encoder(obs)
 
     @timed
     @abstractmethod

@@ -20,7 +20,7 @@ class DummyEnv:
         return [], []
 
     def obs_shape(self):
-        return [self.size]
+        return [self.size, self.size]
 
     def num_actions(self):
         return self.size
@@ -69,12 +69,12 @@ def test_sequential_and_embeddingbag_to_rust():
 
 
 def _make_policy():
-    return BasicPolicy([3], 2, embedding_size=4, common_layers=(), policy_layers=(2,), value_layers=(), device="cpu")
+    return BasicPolicy([3, 3], 2, embedding_size=4, common_layers=(), policy_layers=(2,), value_layers=(), device="cpu")
 
 
 def test_basic_policy_forward_and_to_rust():
     pol = _make_policy()
-    x = torch.randn(1, 3)
+    x = torch.randn(1, 9)
     logits, value = pol(x)
     assert logits.shape == (1, 2)
     assert value.shape == (1, 1)

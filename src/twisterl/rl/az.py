@@ -29,7 +29,7 @@ class AZ(Algorithm):
             data.additional_data["remaining_values"],
         )
 
-        encoded_obs = self.obs_encoder(obs)
+        encoded_obs = self.encode_obs(obs)
 
         pt_obs = torch.tensor(
             encoded_obs, dtype=torch.float, device=self.config["device"]
