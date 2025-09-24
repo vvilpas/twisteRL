@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from twisterl.utils import prepare_algorithm
+from twisterl.utils import load_config, prepare_algorithm
 
 
 @functools.lru_cache(maxsize=1)
@@ -51,52 +51,27 @@ def _ensure_grid_world_available():
 def test_grid_world_external_env_works_with_twisterl():
     module_name = _ensure_grid_world_available()
 
+    config_path = (
+        Path(__file__).resolve().parents[1]
+        / "examples"
+        / "grid_world"
+        / "ppo_grid_world_5x5_v1.json"
+    )
+    algo_config = load_config(config_path)
+    algo_cfg = algo_config["algorithm"]
+    algo_cfg["collecting"].update({"num_cores": 1, "num_episodes": 1})
+
     grid_world_module = importlib.import_module(module_name)
     GridWorld = grid_world_module.GridWorld
 
-    env = GridWorld(4, 4, 10, 2)
+    env_args = algo_config["env"].copy()
+    env = GridWorld(**env_args)
     env.reset()
     # Observations & states should match the board size
     state = env.get_state()
-    assert len(state) == 16
+    expected_cells = env_args["width"] * env_args["height"]
+    assert len(state) == expected_cells
     assert {0, 1, 2, 3}.issuperset(set(state))
-
-    algo_config = {
-        "env_cls": f"{module_name}.GridWorld",
-        "policy_cls": "twisterl.nn.policy.BasicPolicy",
-        "algorithm_cls": "twisterl.rl.ppo.PPO",
-        "env": {"width": 4, "height": 4, "max_steps": 10, "difficulty": 2},
-        "policy": {
-            "embedding_size": 32,
-            "common_layers": [],
-            "policy_layers": [],
-            "value_layers": [],
-            "device": "cpu",
-        },
-        "algorithm": {
-            "device": "cpu",
-            "collecting": {
-                "num_cores": 1,
-                "num_episodes": 1,
-                "lambda": 0.95,
-                "gamma": 0.95,
-            },
-            "training": {
-                "num_epochs": 1,
-                "vf_coef": 0.8,
-                "ent_coef": 0.0,
-                "clip_ratio": 0.1,
-                "normalize_advantage": False,
-            },
-            "optimizer": {"lr": 0.001},
-            "logging": {"log_freq": 0, "checkpoint_freq": 0},
-            "learning": {
-                "diff_threshold": 0.9,
-                "diff_metric": "ppo_deterministic",
-                "diff_max": 3,
-            },
-        },
-    }
 
     algo = prepare_algorithm(algo_config)
 
